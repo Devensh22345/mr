@@ -439,4 +439,185 @@ class ReportHandler:
                                 elif target.startswith("t.me/"):
                                     await client.join_chat(target)
                                 entity = await client.get_chat(target)
-                           
+                            except:
+                                results.append(f"❌ {account['phone']}: Could not access group")
+                                fail_count += 1
+                                await client.disconnect()
+                                continue
+                        entity_type = enums.ReportReasonType.CHILD_ABUSE
+                    elif report_type == "channel":
+                        try:
+                            entity = await client.get_chat(target)
+                        except:
+                            results.append(f"❌ {account['phone']}: Could not access channel")
+                            fail_count += 1
+                            await client.disconnect()
+                            continue
+                        entity_type = enums.ReportReasonType.CHILD_ABUSE
+                    elif report_type == "post":
+                        # Parse post link
+                        if "t.me/c/" in target or "t.me/" in target:
+                            # Extract channel and message ID
+                            parts = target.split("/")
+                            if len(parts) >= 2:
+                                channel = parts[-2]
+                                try:
+                                    message_id = int(parts[-1])
+                                except:
+                                    message_id = None
+                                
+                                if message_id:
+                                    try:
+                                        entity = await client.get_chat(channel)
+                                        # Report the specific message
+                                        await client.report_chat(
+                                            entity.id,
+                                            enums.ReportReasonType.CHILD_ABUSE,
+                                            message_id
+                                        )
+                                        success_count += 1
+                                        total_reports += 1
+                                        results.append(f"✅ {account['phone']}: Post reported")
+                                    except Exception as e:
+                                        results.append(f"❌ {account['phone']}: {str(e)[:50]}")
+                                        fail_count += 1
+                                else:
+                                    results.append(f"❌ {account['phone']}: Invalid post link")
+                                    fail_count += 1
+                            
+                            await client.disconnect()
+                            continue
+                        else:
+                            results.append(f"❌ {account['phone']}: Invalid post link")
+                            fail_count += 1
+                            await client.disconnect()
+                            continue
+                    else:
+                        results.append(f"❌ {account['phone']}: Unknown report type")
+                        fail_count += 1
+                        await client.disconnect()
+                        continue
+                    
+                    # Send reports
+                    reports_sent = 0
+                    for report_num in range(count):
+                        if config.stop_reporting:
+                            break
+                        
+                        try:
+                            if report_type == "post":
+                                # Already handled above
+                                break
+                            else:
+                                await client.report_chat(
+                                    entity.id,
+                                    entity_type,
+                                    description[:200]  # Limit description length
+                                )
+                            
+                            reports_sent += 1
+                            total_reports += 1
+                            
+                            # Random delay between reports from same account
+                            if report_num < count - 1:
+                                await asyncio.sleep(random.uniform(10, 30))
+                        
+                        except Exception as e:
+                            error_msg = str(e)
+                            if "FLOOD_WAIT" in error_msg:
+                                results.append(f"⏳ {account['phone']}: Flood wait")
+                                break
+                            elif "Too Many Requests" in error_msg:
+                                results.append(f"⚠️ {account['phone']}: Too many requests")
+                                break
+                            else:
+                                results.append(f"❌ {account['phone']}: Report {report_num+1} failed - {error_msg[:50]}")
+                    
+                    if reports_sent > 0:
+                        success_count += 1
+                        if reports_sent == count:
+                            results.append(f"✅ {account['phone']}: All {count} reports sent")
+                        else:
+                            results.append(f"⚠️ {account['phone']}: {reports_sent}/{count} reports sent")
+                    else:
+                        fail_count += 1
+                
+                except Exception as e:
+                    results.append(f"❌ {account['phone']}: {str(e)[:50]}")
+                    fail_count += 1
+                
+                await client.disconnect()
+                
+                # Random delay between accounts
+                await asyncio.sleep(random.uniform(5, 15))
+            
+            except Exception as e:
+                results.append(f"❌ {account['phone']}: Connection error - {str(e)[:50]}")
+                fail_count += 1
+            
+            # Update progress every 10 accounts
+            if (i + 1) % 10 == 0:
+                progress = f"🚨 **Progress:** {i + 1}/{len(accounts)}\n"
+                progress += f"✅ Success: {success_count}\n"
+                progress += f"❌ Failed: {fail_count}\n"
+                progress += f"📊 Total Reports: {total_reports}"
+                await callback_query.message.edit_text(progress)
+        
+        # Final result
+        self.reporting_active = False
+        
+        result_text = f"🚨 **Reporting Complete!**\n\n"
+        result_text += f"🎯 **Target:** `{target}`\n"
+        result_text += f"📋 **Reason:** {reason}\n"
+        result_text += f"✅ **Successful Accounts:** {success_count}\n"
+        result_text += f"❌ **Failed Accounts:** {fail_count}\n"
+        result_text += f"📊 **Total Reports Sent:** {total_reports}\n"
+        result_text += f"📈 **Total Accounts:** {len(accounts)}\n\n"
+        
+        if results:
+            result_text += "**First 20 Results:**\n"
+            for res in results[:20]:
+                result_text += f"{res}\n"
+            
+            if len(results) > 20:
+                result_text += f"\n... and {len(results) - 20} more"
+        
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("🔄 Report Another", callback_data="report_again")],
+            [InlineKeyboardButton("⬅️ Back", callback_data="back_to_admin")]
+        ])
+        
+        await callback_query.message.edit_text(result_text, reply_markup=keyboard)
+        
+        # Log completion
+        if config.REPORT_LOG_CHANNEL:
+            log_msg = f"🚨 **Reporting Completed**\n\n"
+            log_msg += f"✅ **Successful:** {success_count}\n"
+            log_msg += f"❌ **Failed:** {fail_count}\n"
+            log_msg += f"📊 **Total Reports:** {total_reports}\n"
+            log_msg += f"🎯 **Target:** `{target}`\n"
+            await log_to_channel(config.REPORT_LOG_CHANNEL, log_msg)
+        
+        # Cleanup
+        if user_id in self.report_tasks:
+            del self.report_tasks[user_id]
+    
+    async def show_report_stats(self, callback_query: CallbackQuery):
+        total_accounts = await db.accounts.count_documents({})
+        active_accounts = await db.accounts.count_documents({"is_active": True})
+        
+        text = f"🚨 **Report Statistics**\n\n"
+        text += f"📈 **Accounts:**\n"
+        text += f"• Total: {total_accounts}\n"
+        text += f"• Active: {active_accounts}\n"
+        text += f"• Inactive: {total_accounts - active_accounts}\n\n"
+        
+        if self.reporting_active:
+            text += f"🔴 **Status:** Currently reporting\n"
+        
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("🔄 Refresh", callback_data="report_stats")],
+            [InlineKeyboardButton("⬅️ Back", callback_data="back_to_admin")]
+        ])
+        
+        await callback_query.message.edit_text(text, reply_markup=keyboard)
