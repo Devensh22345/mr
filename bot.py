@@ -205,13 +205,10 @@ async def callback_handler(client, callback_query: CallbackQuery):
     
     await callback_query.answer()
 
-from pyrogram import filters
-
-# ... other imports ...
-
-@bot.on_message(filters.text & ~filters.command)
+# FIXED: Handle text messages and manually filter out commands
+@bot.on_message(filters.text)
 async def message_handler(client, message: Message):
-    # Check if it's actually a command (double check)
+    # Manually filter out commands
     if message.text and message.text.startswith("/"):
         return
     
