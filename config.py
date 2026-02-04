@@ -5,17 +5,17 @@ load_dotenv()
 
 class Config:
     # Bot Configuration
-    BOT_TOKEN = os.getenv("BOT_TOKEN")
-    API_ID = int(os.getenv("API_ID", 12345))
-    API_HASH = os.getenv("API_HASH", "")
+    BOT_TOKEN = os.getenv("BOT_TOKEN", "6898973868:AAFX3tkIGJIHcRlY1DqwNNSecbS7dpieSUc")
+    API_ID = int(os.getenv("API_ID", "37820109"))
+    API_HASH = os.getenv("API_HASH", "3bdea127dfe16be0ba54fc74fb25e950")
     
     # MongoDB Configuration
-    MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
+    MONGODB_URI = os.getenv("MONGODB_URI", "mongodb+srv://10:10@cluster0.rbnwfqt.mongodb.net/?appName=Cluster0")
     DB_NAME = os.getenv("DB_NAME", "telegram_bot")
     
     # Logging Channels
-    MAIN_LOG_GROUP = int(os.getenv("MAIN_LOG_GROUP", -1001234567890))
-    STRING_CHANNEL = int(os.getenv("STRING_CHANNEL", -1001234567891))
+    MAIN_LOG_GROUP = int(os.getenv("MAIN_LOG_GROUP", "-1003778339813"))
+    STRING_CHANNEL = int(os.getenv("STRING_CHANNEL", "-1003804481865"))
     REPORT_LOG_CHANNEL = None  # Set by admin
     SEND_LOG_CHANNEL = None    # Set by admin
     OTP_LOG_CHANNEL = None     # Set by admin
@@ -23,11 +23,11 @@ class Config:
     LEAVE_LOG_CHANNEL = None   # Set by admin
     
     # Admin Settings
-    OWNER_ID = int(os.getenv("OWNER_ID", 123456789))
-    ADMINS = list(map(int, os.getenv("ADMINS", "").split(","))) if os.getenv("ADMINS") else []
+    OWNER_ID = int(os.getenv("OWNER_ID", "6872968794"))
+    ADMINS = list(map(int, os.getenv("ADMINS", "6872968794").split(","))) if os.getenv("ADMINS") else []
     
     # Other Settings
-    MAX_ACCOUNTS = 10000
+    MAX_ACCOUNTS = "10000"
     SESSION_DIR = "sessions"
     
     # Operation flags
