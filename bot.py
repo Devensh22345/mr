@@ -205,8 +205,16 @@ async def callback_handler(client, callback_query: CallbackQuery):
     
     await callback_query.answer()
 
-@bot.on_message(filters.text & ~filters.command())
+from pyrogram import filters
+
+# ... other imports ...
+
+@bot.on_message(filters.text & ~filters.command)
 async def message_handler(client, message: Message):
+    # Check if it's actually a command (double check)
+    if message.text and message.text.startswith("/"):
+        return
+    
     # Pass message to appropriate handler based on user state
     await login_handler.process_message(message)
     await user_menu.process_message(message)
