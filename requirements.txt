@@ -1,0 +1,6 @@
+pyrogram>=2.0.0
+tgcrypto
+motor>=3.0.0
+pymongo>=4.0.0
+python-dotenv>=0.20.0
+aiofiles>=22.0.0
