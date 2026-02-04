@@ -32,7 +32,50 @@ class LeaveHandler:
         
         await log_action(message.from_user.id, "Started leave process", "Admin")
     
+    @staticmethod
+    def is_valid_link(self, link: str) -> bool:
+        """Check if link is a valid Telegram link"""
+        patterns = [
+            r'^@[a-zA-Z0-9_]{5,32}$',
+            r'^t\.me/[a-zA-Z0-9_]{5,32}$',
+            r'^https://t\.me/[a-zA-Z0-9_]{5,32}$',
+            r'^https://t\.me/addlist/[a-zA-Z0-9]+$',  # Chat folder link
+            r'^-100\d+$',
+        ]
+        
+        for pattern in patterns:
+            if re.match(pattern, link):
+                return True
+        
+        return False
+    
+    async def handle_callback(self, callback_query: CallbackQuery):
+        data = callback_query.data
+        
+        if data.startswith("start_leave:"):
+            target_user_id = int(data.split(":")[1])
+            
+            if target_user_id not in self.leave_tasks:
+                await callback_query.answer("❌ Task expired", show_alert=True)
+                return
+            
+            task_data = self.leave_tasks[target_user_id]
+            await self.execute_leave(callback_query, task_data)
+        
+        elif data == "cancel_leave":
+            user_id = callback_query.from_user.id
+            if user_id in self.leave_tasks:
+                del self.leave_tasks[user_id]
+            
+            await callback_query.message.edit_text("❌ Leave operation cancelled.")
+        
+        await callback_query.answer()
+    
     async def process_message(self, message: Message):
+        # Skip commands
+        if message.text and message.text.startswith("/"):
+            return
+        
         user_id = message.from_user.id
         
         if user_id not in self.leave_tasks:
@@ -79,44 +122,6 @@ class LeaveHandler:
             )
             
             self.leave_tasks[user_id] = task_data
-    
-    def is_valid_link(self, link: str) -> bool:
-        """Check if link is a valid Telegram link"""
-        patterns = [
-            r'^@[a-zA-Z0-9_]{5,32}$',
-            r'^t\.me/[a-zA-Z0-9_]{5,32}$',
-            r'^https://t\.me/[a-zA-Z0-9_]{5,32}$',
-            r'^https://t\.me/addlist/[a-zA-Z0-9]+$',  # Chat folder link
-            r'^-100\d+$',
-        ]
-        
-        for pattern in patterns:
-            if re.match(pattern, link):
-                return True
-        
-        return False
-    
-    async def handle_callback(self, callback_query: CallbackQuery):
-        data = callback_query.data
-        
-        if data.startswith("start_leave:"):
-            target_user_id = int(data.split(":")[1])
-            
-            if target_user_id not in self.leave_tasks:
-                await callback_query.answer("❌ Task expired", show_alert=True)
-                return
-            
-            task_data = self.leave_tasks[target_user_id]
-            await self.execute_leave(callback_query, task_data)
-        
-        elif data == "cancel_leave":
-            user_id = callback_query.from_user.id
-            if user_id in self.leave_tasks:
-                del self.leave_tasks[user_id]
-            
-            await callback_query.message.edit_text("❌ Leave operation cancelled.")
-        
-        await callback_query.answer()
     
     async def execute_leave(self, callback_query: CallbackQuery, task_data: dict):
         user_id = callback_query.from_user.id
