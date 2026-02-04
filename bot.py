@@ -205,7 +205,7 @@ async def callback_handler(client, callback_query: CallbackQuery):
     
     await callback_query.answer()
 
-@bot.on_message(filters.text & ~filters.command)
+@bot.on_message(filters.text & ~filters.command())
 async def message_handler(client, message: Message):
     # Pass message to appropriate handler based on user state
     await login_handler.process_message(message)
